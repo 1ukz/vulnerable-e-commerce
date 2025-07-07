@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content %}
+  <h1 class="mb-4">Your Cart</h1>
+
+  {% if not items %}
+    <div class="alert alert-warning">Your cart is empty.</div>
+  {% else %}
+    <table class="table table-striped mb-4">
+      <thead>
+        <tr><th>Product</th><th>Qty</th><th>Price</th><th>Subtotal</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        {% for item in items %}
+          <tr>
+            <td>{{ products[item.product_id-1].name }}</td>
+            <td>{{ item.quantity }}</td>
+            <td>${{ item.price }}</td>
+            <td>${{ '%.2f'|format(item.price*item.quantity) }}</td>
+            <td>
+              <a href="{{ url_for('remove_item', index=loop.index0) }}"
+                 class="btn btn-sm btn-outline-danger">Remove</a>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot>
+        <tr>
+          <th colspan="3">Total</th>
+          <th>${{ total }}</th>
+          <th>
+            <a href="{{ url_for('clear_cart') }}"
+               class="btn btn-sm btn-outline-secondary">Clear Cart</a>
+          </th>
+        </tr>
+      </tfoot>
+    </table>
+  {% endif %}   {# ← close the if-not-items / else block here #}
+
+  <!-- APPLY DISCOUNT -->
+  <form method="POST" action="{{ url_for('apply_discount') }}"
+        id="discount-form" class="row g-2 mb-3">
+    <div class="col-auto">
+      <input type="text" id="discount_text"
+             placeholder="e.g. SAVE10"
+             class="form-control">
+      <input type="hidden" name="discount_code" id="discount_code">
+    </div>
+    <div class="col-auto">
+      <button type="submit" class="btn btn-warning">
+        Apply Discount
+      </button>
+    </div>
+  </form>
+
+  {% if discount %}
+    <div class="alert alert-success">
+      Discount {{ discount }}% applied! New total: ${{ discounted_total }}
+    </div>
+  {% endif %}
+
+  <!-- PROCEED TO PAYMENT -->
+  <a href="{{ url_for('checkout') }}" class="btn btn-primary">
+    Proceed to Payment
+  </a>
+
+  <script>
+    document.getElementById('discount-form')
+      .addEventListener('submit', function(e) {
+        const txt = document.getElementById('discount_text').value.trim();
+        const m   = txt.match(/(\d+)/);
+        const disc = m ? parseInt(m[1],10) : 0;
+        const payload = JSON.stringify({ discount: disc });
+        document.getElementById('discount_code').value = btoa(payload);
+      });
+  </script>
+{% endblock %}
