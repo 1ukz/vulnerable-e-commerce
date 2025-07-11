@@ -1,6 +1,5 @@
 from flask import (
     Flask,
-    render_template_string,
     request,
     redirect,
     url_for,
@@ -8,14 +7,15 @@ from flask import (
     make_response,
     session,
 )
-import base64, json, zlib
+import base64, json
 from collections import defaultdict
 
 app = Flask(__name__)
-app.secret_key = "insecure-secret-key"  # required for session
+app.secret_key = "insecure-secret-key"
 
-# In-memory carts, keyed by user_id cookie
+# In-memory carts and discounts, keyed by user_id
 carts = defaultdict(list)
+discounts = defaultdict(int)
 
 products = [
     {
@@ -50,53 +50,55 @@ products = [
 user_names = {"1": "Lucas", "2": "Maria"}
 
 
-def get_user_id():
-    return request.cookies.get("user_id")
+@app.context_processor
+def inject_globals():
+    # Get user_id from URL path if available
+    user_id_val = request.view_args.get("user_id", 1) if request.view_args else 1
+    user_id_str = str(user_id_val)
+    name = user_names.get(user_id_str, "Guest")
+    cart_count = sum(i["quantity"] for i in carts[user_id_str])
+    return {
+        "current_user": name,
+        "cart_count": cart_count,
+        "current_user_id": user_id_val,
+    }
+
+
+@app.route("/")
+def index():
+    return redirect(url_for("shop", user_id=1))
 
 
 @app.route("/set_user/<int:uid>")
 def set_user(uid):
-    resp = make_response(redirect(url_for("shop")))
-    resp.set_cookie("user_id", str(uid))  # session-cookie
-    return resp
+    return redirect(url_for("shop", user_id=uid))
 
 
-@app.context_processor
-def inject_globals():
-    uid = get_user_id() or "1"
-    name = user_names.get(uid, "Guest")
-    cart_count = sum(i["quantity"] for i in carts[uid])
-    # return both current_user and cart_count
-    return {"current_user": name, "cart_count": cart_count}
-
-
-@app.route("/")
-def shop():
-    # reset everything on landing
-    uid = get_user_id()
-    if not uid:
-        return redirect(url_for("set_user", uid=1))
-    carts.pop(uid, None)
-    session.pop("discount", None)
+@app.route("/user/<int:user_id>/shop")
+def shop(user_id):
+    # Clear cart and discount for this user on landing
+    user_id_str = str(user_id)
+    carts.pop(user_id_str, None)
+    discounts.pop(user_id_str, None)
     return render_template("shop.html", products=products)
 
 
-@app.route("/cart/add", methods=["POST"])
-def add_to_cart():
-    uid = get_user_id()
+@app.route("/user/<int:user_id>/cart/add", methods=["POST"])
+def add_to_cart(user_id):
+    user_id_str = str(user_id)
     pid = int(request.form["product_id"])
     qty = int(request.form["quantity"])
     price = float(request.form["price"])
-    carts[uid].append({"product_id": pid, "quantity": qty, "price": price})
-    return redirect(url_for("view_cart"))
+    carts[user_id_str].append({"product_id": pid, "quantity": qty, "price": price})
+    return redirect(url_for("view_cart", user_id=user_id))
 
 
-@app.route("/cart")
-def view_cart():
-    uid = get_user_id()
-    items = carts[uid]
+@app.route("/user/<int:user_id>/cart")
+def view_cart(user_id):
+    user_id_str = str(user_id)
+    items = carts[user_id_str]
     total = sum(i["price"] * i["quantity"] for i in items)
-    discount = session.get("discount", 0)  # stored in session
+    discount = discounts.get(user_id_str, 0)
     discounted_total = round(total * (1 - discount / 100), 2)
     return render_template(
         "cart.html",
@@ -108,52 +110,50 @@ def view_cart():
     )
 
 
-@app.route("/cart/remove/<int:index>")
-def remove_item(index):
-    uid = get_user_id()
-    if 0 <= index < len(carts[uid]):
-        carts[uid].pop(index)
-    return redirect(url_for("view_cart"))
+@app.route("/user/<int:user_id>/cart/remove/<int:index>")
+def remove_item(user_id, index):
+    user_id_str = str(user_id)
+    if 0 <= index < len(carts[user_id_str]):
+        carts[user_id_str].pop(index)
+    return redirect(url_for("view_cart", user_id=user_id))
 
 
-@app.route("/cart/clear")
-def clear_cart():
-    uid = get_user_id()
-    carts[uid].clear()
-    session.pop("discount", None)
-    return redirect(url_for("view_cart"))
+@app.route("/user/<int:user_id>/cart/clear")
+def clear_cart(user_id):
+    user_id_str = str(user_id)
+    carts[user_id_str].clear()
+    discounts.pop(user_id_str, None)
+    return redirect(url_for("view_cart", user_id=user_id))
 
 
-@app.route("/cart/apply", methods=["POST"])
-def apply_discount():
+@app.route("/user/<int:user_id>/cart/apply", methods=["POST"])
+def apply_discount(user_id):
+    user_id_str = str(user_id)
     code = request.form.get("discount_code", "")
     try:
         disc = json.loads(base64.b64decode(code))["discount"]
     except:
         disc = 0
-    session["discount"] = disc
-    return redirect(url_for("view_cart"))
+    discounts[user_id_str] = disc
+    return redirect(url_for("view_cart", user_id=user_id))
 
 
-@app.route("/checkout")
-def checkout():
-    uid = get_user_id()
-    total = sum(i["price"] * i["quantity"] for i in carts[uid])
-    discount = session.get("discount", 0)
+@app.route("/user/<int:user_id>/checkout")
+def checkout(user_id):
+    user_id_str = str(user_id)
+    total = sum(i["price"] * i["quantity"] for i in carts[user_id_str])
+    discount = discounts.get(user_id_str, 0)
     final = round(total * (1 - discount / 100), 2)
     return render_template("payment.html", amount=final)
 
 
-@app.route("/payment/submit", methods=["POST"])
-def payment_submit():
-    uid = get_user_id()
-    # recompute the cart total & discount just like in checkout
-    items = carts.get(uid, [])
+@app.route("/user/<int:user_id>/payment/submit", methods=["POST"])
+def payment_submit(user_id):
+    user_id_str = str(user_id)
+    items = carts.get(user_id_str, [])
     total = sum(i["price"] * i["quantity"] for i in items)
-    discount = session.get("discount", 0)
+    discount = discounts.get(user_id_str, 0)
     final_total = round(total * (1 - discount / 100), 2)
-
-    # now render the template with the final_total
     return render_template("thanks.html", amount=final_total)
 
 

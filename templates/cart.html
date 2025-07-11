@@ -17,7 +17,7 @@
             <td>${{ item.price }}</td>
             <td>${{ '%.2f'|format(item.price*item.quantity) }}</td>
             <td>
-              <a href="{{ url_for('remove_item', index=loop.index0) }}"
+              <a href="{{ url_for('remove_item', user_id=current_user_id, index=loop.index0) }}"
                  class="btn btn-sm btn-outline-danger">Remove</a>
             </td>
           </tr>
@@ -28,16 +28,16 @@
           <th colspan="3">Total</th>
           <th>${{ total }}</th>
           <th>
-            <a href="{{ url_for('clear_cart') }}"
+            <a href="{{ url_for('clear_cart', user_id=current_user_id) }}"
                class="btn btn-sm btn-outline-secondary">Clear Cart</a>
           </th>
         </tr>
       </tfoot>
     </table>
-  {% endif %}   {# ← close the if-not-items / else block here #}
+  {% endif %}
 
   <!-- APPLY DISCOUNT -->
-  <form method="POST" action="{{ url_for('apply_discount') }}"
+  <form method="POST" action="{{ url_for('apply_discount', user_id=current_user_id) }}"
         id="discount-form" class="row g-2 mb-3">
     <div class="col-auto">
       <input type="text" id="discount_text"
@@ -59,7 +59,7 @@
   {% endif %}
 
   <!-- PROCEED TO PAYMENT -->
-  <a href="{{ url_for('checkout') }}" class="btn btn-primary">
+  <a href="{{ url_for('checkout', user_id=current_user_id) }}" class="btn btn-primary">
     Proceed to Payment
   </a>
 

@@ -10,7 +10,7 @@
             <h5 class="card-title">{{ p.name }}</h5>
             <p class="card-text">{{ p.desc }}</p>
             <p class="fw-bold">$ {{ p.price }}</p>
-            <form method="POST" action="{{ url_for('add_to_cart') }}" class="mt-auto">
+            <form method="POST" action="{{ url_for('add_to_cart', user_id=current_user_id) }}" class="mt-auto">
               <input type="hidden" name="product_id" value="{{ p.id }}">
               <input type="hidden" name="price" value="{{ p.price }}">
               <div class="input-group mb-2">

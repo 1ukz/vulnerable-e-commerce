@@ -10,14 +10,14 @@
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
   <div class="container">
-    <a class="navbar-brand" href="{{ url_for('shop') }}">VulnShop</a>
+    <a class="navbar-brand" href="{{ url_for('shop', user_id=current_user_id) }}">VulnShop</a>
     <div class="collapse navbar-collapse">
       <ul class="navbar-nav me-auto">
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('shop') }}">Shop</a>
+          <a class="nav-link" href="{{ url_for('shop', user_id=current_user_id) }}">Shop</a>
         </li>
         <li class="nav-item">
-          <a class="nav-link" href="{{ url_for('view_cart') }}">
+          <a class="nav-link" href="{{ url_for('view_cart', user_id=current_user_id) }}">
             Cart <span class="badge bg-warning text-dark">{{ cart_count }}</span>
           </a>
         </li>

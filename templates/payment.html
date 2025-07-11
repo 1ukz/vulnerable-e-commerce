@@ -3,7 +3,7 @@
   <h1 class="mb-4">Payment</h1>
   <p><strong>Amount due:</strong> ${{ amount }}</p>
 
-  <form method="POST" action="{{ url_for('payment_submit') }}" class="row g-3">
+  <form method="POST" action="{{ url_for('payment_submit', user_id=current_user_id) }}" class="row g-3">
     <div class="col-md-6">
       <label class="form-label">Your Name</label>
       <input name="name" class="form-control">
@@ -18,7 +18,7 @@
     </div>
     <div class="col-12">
       <button type="submit" class="btn btn-success">Submit Payment</button>
-      <a href="{{ url_for('view_cart') }}" class="btn btn-secondary">Back to Cart</a>
+      <a href="{{ url_for('view_cart', user_id=current_user_id) }}" class="btn btn-secondary">Back to Cart</a>
     </div>
   </form>
 {% endblock %}
